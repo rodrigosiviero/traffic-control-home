@@ -1,5 +1,6 @@
 import logging
 import time
+import threading
 
 import cv2
 import numpy as np
@@ -8,7 +9,7 @@ logger = logging.getLogger("traffic-monitor.camera")
 
 
 class RTSPCamera:
-    """Gerencia conexão RTSP com reconexão automática."""
+    """Gerencia conexão RTSP com thread dedicada de captura."""
     
     def __init__(self, config: dict):
         self.rtsp_url = config["rtsp_url"]
@@ -18,6 +19,13 @@ class RTSPCamera:
         self._reconnect_attempts = 0
         self._max_reconnect_attempts = 10
         self._reconnect_delay = 5
+        
+        # Thread dedicada de captura
+        self._frame = None
+        self._lock = threading.Lock()
+        self._running = False
+        self._thread = None
+        self._connected = False
     
     def connect(self) -> bool:
         logger.info(f"Conectando em {self._mask_url()}...")
@@ -30,43 +38,98 @@ class RTSPCamera:
             logger.error("Falha ao abrir stream RTSP")
             return False
         
+        # Ler primeiro frame pra confirmar
         ret, frame = self.cap.read()
         if not ret:
-            logger.error("Conectou mas não conseguiu ler frame")
+            logger.error("Stream abriu mas não leu frame")
             self.cap.release()
             return False
         
-        h, w = frame.shape[:2]
-        logger.info(f"Conectado! Resolução nativa: {w}x{h}")
-        self._reconnect_attempts = 0
+        self._native_width = frame.shape[1]
+        self._native_height = frame.shape[0]
+        logger.info(f"Conectado! Resolução nativa: {self._native_width}x{self._native_height}")
+        
+        with self._lock:
+            self._frame = frame
+        
+        # Iniciar thread de captura
+        self._running = True
+        self._connected = True
+        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._thread.start()
+        
         return True
     
+    def _capture_loop(self):
+        """Thread dedicada — sempre lê o frame mais recente."""
+        while self._running:
+            ret, frame = self.cap.read()
+            if not ret:
+                logger.warning("Frame perdido na captura")
+                self._connected = False
+                break
+            with self._lock:
+                self._frame = frame
+    
     def read(self):
-        if self.cap is None:
-            return False, None
-        
-        ret, frame = self.cap.read()
-        if not ret:
-            return False, None
-        return True, frame
+        """Retorna o frame mais recente (não bloqueia)."""
+        with self._lock:
+            if self._frame is None:
+                return False, None
+            return True, self._frame.copy()
+    
+    def get_native_size(self):
+        return getattr(self, '_native_width', 0), getattr(self, '_native_height', 0)
     
     def reconnect(self):
-        self._reconnect_attempts += 1
-        if self._reconnect_attempts > self._max_reconnect_attempts:
-            logger.error(f"Máximo de tentativas atingido ({self._max_reconnect_attempts})")
-            return False
+        """Reconecta com backoff progressivo."""
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=2)
         
-        wait = min(self._reconnect_delay * self._reconnect_attempts, 60)
-        logger.info(f"Reconectando em {wait}s (tentativa {self._reconnect_attempts})...")
-        time.sleep(wait)
-        self.disconnect()
-        return self.connect()
-    
-    def disconnect(self):
         if self.cap is not None:
             self.cap.release()
             self.cap = None
+        
+        while self._reconnect_attempts < self._max_reconnect_attempts:
+            self._reconnect_attempts += 1
+            delay = min(self._reconnect_delay * self._reconnect_attempts, 60)
+            logger.warning(f"Reconectando (tentativa {self._reconnect_attempts}/{self._max_reconnect_attempts}) em {delay}s...")
+            time.sleep(delay)
+            
+            self.cap = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            
+            if self.cap.isOpened():
+                ret, frame = self.cap.read()
+                if ret:
+                    self._native_width = frame.shape[1]
+                    self._native_height = frame.shape[0]
+                    with self._lock:
+                        self._frame = frame
+                    self._reconnect_attempts = 0
+                    self._connected = True
+                    self._running = True
+                    self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+                    self._thread.start()
+                    logger.info(f"Reconectado! ({self._native_width}x{self._native_height})")
+                    return
+                else:
+                    self.cap.release()
+        
+        logger.error(f"Falha após {self._max_reconnect_attempts} tentativas")
     
-    def _mask_url(self) -> str:
+    def disconnect(self):
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=2)
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
+        self._connected = False
+        logger.info("Câmera desconectada")
+    
+    def _mask_url(self):
+        """Mascara senha na URL pra logs."""
         import re
         return re.sub(r'://([^:]+):([^@]+)@', r'://\1:****@', self.rtsp_url)

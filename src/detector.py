@@ -86,18 +86,16 @@ class VehicleDetector:
             verbose=False,
             device="cpu",
             half=False,
-            max_det=20,  # Limitar detecções pra economizar CPU
+            max_det=20,
         )
         
-        detections = []
-        if results and len(results) > 0:
-            result = results[0]
-            if result.boxes is not None and len(result.boxes) > 0:
-                boxes = result.boxes
-                for i in range(len(boxes)):
-                    x1, y1, x2, y2 = boxes.xyxy[i].cpu().numpy()
-                    conf = float(boxes.conf[i].cpu().numpy())
-                    cls_id = int(boxes.cls[i].cpu().numpy())
-                    detections.append([x1, y1, x2, y2, conf, cls_id])
+        if not results or results[0].boxes is None or len(results[0].boxes) == 0:
+            return []
         
-        return detections
+        # Extração vetorizada — uma operação por tensor, não por detecção
+        boxes = results[0].boxes
+        xyxy = boxes.xyxy.cpu().numpy()     # shape (N, 4)
+        confs = boxes.conf.cpu().numpy()    # shape (N,)
+        clsids = boxes.cls.cpu().numpy()    # shape (N,)
+        
+        return np.column_stack([xyxy, confs[:, None], clsids[:, None]]).tolist()

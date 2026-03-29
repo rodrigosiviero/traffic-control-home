@@ -1,5 +1,10 @@
-import sys
 import os
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "4"
+os.environ["ONNXRUNTIME_INTRA_OP_NUM_THREADS"] = "4"
+
+import sys
 import argparse
 import logging
 import time
@@ -237,8 +242,6 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
             frame_count += 1
             fps_count += 1
             
-            alert_manager.add_frame(frame, frame_count)
-            
             now = time.time()
             if now - fps_start >= 1.0:
                 current_fps = fps_count / (now - fps_start)
@@ -260,6 +263,9 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
                     if _debug_show("Traffic Monitor", display_frame, 1):
                         break
                 continue
+            
+            # Buffer de frames pra clips (só frames processados)
+            alert_manager.add_frame(frame, frame_count)
             
             # === PROCESSAMENTO ===
             process_frame = frame  # Sem cópia, economia de RAM
@@ -321,8 +327,8 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
                     dy1 = int(np.clip(det[1] * scale_y, 0, frame.shape[0]))
                     dx2 = int(np.clip(det[2] * scale_x, 0, frame.shape[1]))
                     dy2 = int(np.clip(det[3] * scale_y, 0, frame.shape[0]))
-                    cls_id = det[4]
-                    conf = det[5]
+                    conf = det[4]
+                    cls_id = int(det[5])
                     cls_name = COCO_VEHICLES.get(cls_id, str(cls_id))
                     cv2.rectangle(debug_frame, (dx1, dy1), (dx2, dy2), (0, 255, 255), 2)
                     cv2.putText(debug_frame, f"{cls_name} {conf:.0%}", (dx1, dy1 - 5),
@@ -335,10 +341,11 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
                 if len(history) < 2:
                     continue
                 
-                scaled_history = [(p[0] * scale_x, p[1] * scale_y) for p in history]
+                history_arr = np.array(list(history))  # deque → numpy
+                scaled_history = (history_arr * [scale_x, scale_y]).tolist()
                 
                 direction_result = direction_checker.check(scaled_history)
-                speed_kmh, is_speeding = speed_estimator.estimate_speed(scaled_history)
+                speed_kmh, _ = speed_estimator.estimate_speed(scaled_history)
                 
                 class_id = int(track_data["last_detection"][5])
                 class_names = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
@@ -351,9 +358,8 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
                     mqtt_publisher.publish_vehicle(track_id, class_name, speed_kmh)
                 
                 is_wrong_way = direction_result["is_wrong_way"]
-                is_speeding = (speed_kmh is not None and 
-                              speed_kmh > config["speed"]["limit_kmh"] + 
-                              config["speed"].get("tolerance_kmh", 5))
+                speed_limit = config["speed"]["limit_kmh"] + config["speed"].get("tolerance_kmh", 5)
+                is_speeding = speed_kmh is not None and speed_kmh > speed_limit
                 
                 if is_wrong_way:
                     alert_manager.alert(
