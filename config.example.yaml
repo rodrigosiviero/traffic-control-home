@@ -17,7 +17,9 @@ detection:
   model_size: "n"
   confidence: 0.3
   classes: [2, 3, 5, 7]
-  use_onnx: false
+  # Device: "auto" (tenta Intel GPU → CPU), "gpu" (força Intel GPU), "cpu"
+  device: "auto"
+  imgsz: 640
 
 # ============================================================
 # CALIBRAÇÃO - Dois métodos:
