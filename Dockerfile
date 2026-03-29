@@ -1,6 +1,7 @@
-FROM python:3.11-slim
+FROM openvino/ubuntu22_runtime:latest
 
-# Dependências básicas do sistema
+USER root
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
@@ -12,7 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Requirements com OpenVINO
 COPY requirements-docker.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
