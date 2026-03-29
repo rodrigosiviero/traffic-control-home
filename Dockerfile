@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Dependências do sistema + Intel GPU (VA-API / OpenCL)
+# Dependências básicas do sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
@@ -8,10 +8,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     ffmpeg \
+    curl \
+    gnupg \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Intel GPU compute repo (OpenCL / Level Zero para iGPU)
+RUN curl -fsSL https://repositories.intel.com/gpu/intel-graphics.key \
+    | gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] \
+    https://repositories.intel.com/gpu/ubuntu jammy client" \
+    > /etc/apt/sources.list.d/intel-graphics.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
     intel-opencl-icd \
-    intel-media-va-driver \
-    i965-va-driver \
-    clinfo \
+    intel-level-zero-gpu \
+    level-zero \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -21,7 +32,6 @@ COPY requirements-docker.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Exportar modelo OpenVINO durante o build
-# Isso gera yolov8n_openvino_model/ com best.xml + best.bin
 RUN python -c "\
 from ultralytics import YOLO; \
 m = YOLO('yolov8n.pt'); \
@@ -37,8 +47,6 @@ COPY main.py .
 RUN mkdir -p /data/clips /data/logs
 
 ENV DISPLAY=""
-# OpenVINO usa /dev/dri pra Intel GPU
-ENV LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
 
 EXPOSE 8090
 
