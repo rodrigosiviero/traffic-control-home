@@ -70,13 +70,24 @@ class RTSPCamera:
                 break
             with self._lock:
                 self._frame = frame
+            # Pequena pausa pra não girar em busy-loop
+            time.sleep(0.01)
     
     def read(self):
         """Retorna o frame mais recente (não bloqueia)."""
         with self._lock:
             if self._frame is None:
                 return False, None
+            # Copy pra garantir que a thread não sobrescreva
+            # enquanto o caller processa
             return True, self._frame.copy()
+    
+    def read_no_copy(self):
+        """Retorna referência direta — usar só se não modificar o frame."""
+        with self._lock:
+            if self._frame is None:
+                return False, None
+            return True, self._frame
     
     def get_native_size(self):
         return getattr(self, '_native_width', 0), getattr(self, '_native_height', 0)
