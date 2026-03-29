@@ -1,0 +1,9 @@
+# Adicionar ao seu prometheus.yml
+
+scrape_configs:
+  - job_name: 'traffic-monitor'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['IP_DO_SERVIDOR:8090']
+        labels:
+          service: 'traffic-monitor'

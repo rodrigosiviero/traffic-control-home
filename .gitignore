@@ -1,0 +1,8 @@
+config.yaml
+venv/
+__pycache__/
+*.pyc
+clips/
+logs/
+*.onnx
+*.pt

@@ -1,0 +1,89 @@
+# Traffic Monitor v2 - Com Homografia
+# 
+# A calibração por homografia corrige a perspectiva da câmera,
+# permitindo calcular velocidade precisa mesmo com câmera
+# de lado / ângulo / rua inclinada.
+
+camera:
+  rtsp_url: "rtsp://admin:senha@192.168.1.100:554/stream1"
+  process_width: 1536
+  process_height: 576
+  skip_frames: 1
+
+detection:
+  model_size: "n"
+  confidence: 0.3
+  classes: [2, 3, 5, 7]
+  use_onnx: false
+
+# ============================================================
+# CALIBRAÇÃO - Dois métodos:
+#
+# 1. Homografia (RECOMENDADO): Mapeia pixel → metros com
+#    correção de perspectiva. Mínimo 4 pontos.
+#    Gerado automaticamente pelo calibrate.py v2.
+#
+# 2. Linear (legado): 2 pontos, pixels/metro fixo.
+#    Menos preciso com câmera angular.
+# ============================================================
+calibration:
+  method: "homography"
+  
+  # Pontos de referência (gerados pelo calibrate.py)
+  # Formato: pixel: [x, y], real: [x_metros, y_metros]
+  points:
+    - pixel: [100, 400]
+      real: [0.0, 0.0]
+    - pixel: [500, 400]
+      real: [12.0, 0.0]
+  
+  # Matriz 3x3 de homografia (gerada automaticamente)
+  homography_matrix: []
+
+direction:
+  expected: "left_to_right"
+  tolerance: 2.0
+
+speed:
+  limit_kmh: 40
+  tolerance_kmh: 5
+  min_track_frames: 3
+
+alerts:
+  log_file: "logs/alerts.log"
+  save_clips: true
+  clips_folder: "clips"
+  clip_duration_sec: 5
+  terminal_beep: true
+  cooldown_sec: 30
+
+roi:
+  polygon: []
+
+logging:
+  level: "INFO"
+  file: "logs/traffic.log"
+
+# ============================================================
+# API / Prometheus metrics
+# ============================================================
+api:
+  port: 8090
+  status_interval: 30
+
+# ============================================================
+# Prometheus
+# ============================================================
+prometheus:
+  enabled: true
+
+# ============================================================
+# MQTT / Home Assistant
+# ============================================================
+mqtt:
+  enabled: false
+  host: "localhost"
+  port: 1883
+  username: ""
+  password: ""
+  topic_prefix: "traffic-monitor"

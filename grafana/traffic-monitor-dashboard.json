@@ -1,0 +1,251 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Traffic Monitor - Detecção de veículos, velocidade e contramão",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "📊 Resumo Hoje",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "traffic_vehicles_detected_total", "legendFormat": "Veículos", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 10 },
+              { "color": "yellow", "value": 100 }
+            ]
+          },
+          "mappings": []
+        }
+      },
+      "options": { "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "title": "⚠️ Contramão",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        { "expr": "traffic_wrong_way_total", "legendFormat": "Contramão", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": { "graphMode": "area", "colorMode": "background" }
+    },
+    {
+      "title": "🚀 Excesso Velocidade",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "traffic_speeding_total", "legendFormat": "Excesso", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "options": { "graphMode": "area", "colorMode": "background" }
+    },
+    {
+      "title": "🎯 FPS / Latência",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        { "expr": "traffic_detection_fps", "legendFormat": "FPS", "refId": "A" },
+        { "expr": "traffic_processing_latency_seconds * 1000", "legendFormat": "Latência (ms)", "refId": "B" }
+      ],
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } }
+      },
+      "options": { "graphMode": "area" }
+    },
+    {
+      "title": "📈 Veículos por Minuto",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "rate(traffic_vehicles_detected_total[1m]) * 60",
+          "legendFormat": "Veículos/min",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(traffic_cars_total[1m]) * 60",
+          "legendFormat": "Carros/min",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(traffic_motorcycles_total[1m]) * 60",
+          "legendFormat": "Motos/min",
+          "refId": "C"
+        },
+        {
+          "expr": "rate(traffic_trucks_total[1m]) * 60",
+          "legendFormat": "Caminhões/min",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "opm"
+        }
+      }
+    },
+    {
+      "title": "🚨 Infrações ao Longo do Tempo",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "expr": "increase(traffic_wrong_way_total[5m])",
+          "legendFormat": "Contramão (5min)",
+          "refId": "A"
+        },
+        {
+          "expr": "increase(traffic_speeding_total[5m])",
+          "legendFormat": "Excesso velocidade (5min)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20
+          }
+        }
+      }
+    },
+    {
+      "title": "📊 Distribuição de Velocidades",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "rate(traffic_vehicle_speed_kmh_bucket[1h])",
+          "legendFormat": "{{le}} km/h",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "opm"
+        }
+      }
+    },
+    {
+      "title": "🏷️ Excesso por Faixa",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "traffic_speeding_by_excess_bucket_total",
+          "legendFormat": "{{bucket}} km/h acima",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "📋 Tipo de Veículo",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 12 },
+      "targets": [
+        { "expr": "traffic_cars_total", "legendFormat": "Carros", "refId": "A" },
+        { "expr": "traffic_motorcycles_total", "legendFormat": "Motos", "refId": "B" },
+        { "expr": "traffic_trucks_total", "legendFormat": "Caminhões", "refId": "C" },
+        { "expr": "traffic_buses_total", "legendFormat": "Ônibus", "refId": "D" }
+      ]
+    },
+    {
+      "title": "⏱️ FPS e Tracks Ativos",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "traffic_detection_fps",
+          "legendFormat": "FPS",
+          "refId": "A"
+        },
+        {
+          "expr": "traffic_active_tracks",
+          "legendFormat": "Tracks ativos",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "title": "🔗 Câmera & Uptime",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "expr": "traffic_camera_connected",
+          "legendFormat": "Câmera conectada",
+          "refId": "A"
+        },
+        {
+          "expr": "traffic_uptime_seconds / 3600",
+          "legendFormat": "Uptime (horas)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 }
+        }
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["traffic", "monitor", "camera"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "America/Sao_Paulo",
+  "title": "Traffic Monitor",
+  "uid": "traffic-monitor",
+  "version": 1
+}

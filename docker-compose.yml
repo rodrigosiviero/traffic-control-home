@@ -1,0 +1,23 @@
+services:
+  traffic-monitor:
+    build: .
+    container_name: traffic-monitor
+    restart: unless-stopped
+    
+    volumes:
+      # Config
+      - ./config.yaml:/app/config.yaml:ro
+      
+      # Dados persistentes
+      - ./data:/data
+    
+    environment:
+      - TZ=America/Sao_Paulo
+    
+    ports:
+      - "8090:8090"
+    
+    deploy:
+      resources:
+        limits:
+          memory: 2G
