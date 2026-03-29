@@ -1,8 +1,7 @@
 import os
-os.environ["OMP_NUM_THREADS"] = "4"
-os.environ["OPENBLAS_NUM_THREADS"] = "4"
-os.environ["MKL_NUM_THREADS"] = "4"
-os.environ["ONNXRUNTIME_INTRA_OP_NUM_THREADS"] = "4"
+os.environ["OMP_NUM_THREADS"] = "2"
+os.environ["OPENBLAS_NUM_THREADS"] = "2"
+os.environ["MKL_NUM_THREADS"] = "2"
 
 import sys
 import argparse
@@ -277,27 +276,19 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
                 if fw > max_w:
                     ratio = max_w / fw
                     new_h = int(fh * ratio)
-                    small_frame = cv2.resize(process_frame, (max_w, new_h))
-                    pw, ph = max_w, new_h
-                else:
-                    small_frame = process_frame
-                    pw, ph = fw, fh
+                    process_frame = cv2.resize(process_frame, (max_w, new_h))
+                pw, ph = process_frame.shape[1], process_frame.shape[0]
             else:
-                pw = config["camera"].get("process_width", 640)
-                native_ratio = frame.shape[0] / frame.shape[1]
-                ph = int(pw * native_ratio)
-                fh, fw = frame.shape[:2]
-                if pw == fw:
-                    # Resolução nativa — sem resize
-                    small_frame = process_frame
-                else:
-                    small_frame = cv2.resize(process_frame, (pw, ph))
+                # Modo RTSP: manda frame nativo direto pro YOLO
+                # O YOLO já redimensiona internamente (imgsz)
+                # cv2.resize antes seria redundante e desperdiça CPU
+                pw, ph = frame.shape[1], frame.shape[0]
             
             scale_x = frame.shape[1] / pw
             scale_y = frame.shape[0] / ph
             
             t0 = time.time()
-            detections = detector.detect(small_frame)
+            detections = detector.detect(process_frame)
             latency = time.time() - t0
             metrics_module.update_latency(latency)
             
