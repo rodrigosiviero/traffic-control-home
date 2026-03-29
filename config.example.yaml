@@ -6,9 +6,12 @@
 
 camera:
   rtsp_url: "rtsp://admin:senha@192.168.1.100:554/stream1"
-  process_width: 1536
-  process_height: 576
-  skip_frames: 1
+  # process_width: resolução de processamento (altura calculada automaticamente)
+  # 1536 = nativo (mais preciso, mais CPU)
+  # 960  = bom meio-termo (~40% menos pixels que nativo)
+  # 640  = máximo desempenho (pode perder veículos distantes)
+  process_width: 960
+  skip_frames: 2
 
 detection:
   model_size: "n"

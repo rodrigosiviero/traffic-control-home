@@ -284,8 +284,14 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
                     pw, ph = fw, fh
             else:
                 pw = config["camera"].get("process_width", 640)
-                ph = config["camera"].get("process_height", 480)
-                small_frame = cv2.resize(process_frame, (pw, ph))
+                native_ratio = frame.shape[0] / frame.shape[1]
+                ph = int(pw * native_ratio)
+                fh, fw = frame.shape[:2]
+                if pw == fw:
+                    # Resolução nativa — sem resize
+                    small_frame = process_frame
+                else:
+                    small_frame = cv2.resize(process_frame, (pw, ph))
             
             scale_x = frame.shape[1] / pw
             scale_y = frame.shape[0] / ph
@@ -341,10 +347,15 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
                 if len(history) < 2:
                     continue
                 
-                history_arr = np.array(list(history))  # deque → numpy
-                scaled_history = (history_arr * [scale_x, scale_y]).tolist()
+                # history = deque de (x, y, timestamp) em coords do small_frame
+                # Separar pixels (escalar) e timestamps (manter)
+                history_list = list(history)
+                pixels_only = [(p[0] * scale_x, p[1] * scale_y) for p in history_list]
+                scaled_history = [(p[0] * scale_x, p[1] * scale_y, p[2]) for p in history_list]
                 
-                direction_result = direction_checker.check(scaled_history)
+                # Direção: só precisa dos pixels
+                direction_result = direction_checker.check(pixels_only)
+                # Velocidade: pixels + timestamps reais
                 speed_kmh, _ = speed_estimator.estimate_speed(scaled_history)
                 
                 class_id = int(track_data["last_detection"][5])

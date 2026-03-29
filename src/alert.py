@@ -32,8 +32,9 @@ class AlertManager:
         # Buffer circular de frames
         self.buffer_secs = self.clip_duration
         self.after_secs = self.clip_duration
-        self._frame_buffer = deque(maxlen=300)
+        self._frame_buffer = deque(maxlen=150)  # ~5s a 30fps (suficiente)
         self._buffer_lock = threading.Lock()
+        self._buffer_max_width = 640  # Frames menores no buffer = menos RAM
         
         self._active_recordings = {}
         self._rec_lock = threading.Lock()
@@ -54,11 +55,19 @@ class AlertManager:
         self.data_dir = data_dir
     
     def add_frame(self, frame, frame_num: int):
+        """Adiciona frame ao buffer circular (cópia pequena)."""
         if frame is None:
             return
+        h, w = frame.shape[:2]
+        if w > self._buffer_max_width:
+            scale = self._buffer_max_width / w
+            small = cv2.resize(frame, (self._buffer_max_width, int(h * scale)),
+                              interpolation=cv2.INTER_AREA)
+        else:
+            small = frame
         with self._buffer_lock:
             self._frame_buffer.append({
-                "frame": frame.copy(),
+                "frame": small.copy(),
                 "frame_num": frame_num,
                 "timestamp": time.time(),
             })
