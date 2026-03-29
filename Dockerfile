@@ -8,21 +8,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     ffmpeg \
-    curl \
-    gnupg \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Intel GPU compute repo (OpenCL / Level Zero para iGPU)
-RUN curl -fsSL https://repositories.intel.com/gpu/intel-graphics.key \
-    | gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] \
-    https://repositories.intel.com/gpu/ubuntu jammy client" \
-    > /etc/apt/sources.list.d/intel-graphics.list \
-    && apt-get update && apt-get install -y --no-install-recommends \
-    intel-opencl-icd \
-    intel-level-zero-gpu \
-    level-zero \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
