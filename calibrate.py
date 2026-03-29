@@ -303,38 +303,73 @@ class HomographyCalibrator:
             dx = self.direction_points[1][0] - self.direction_points[0][0]
             direction = "left_to_right" if dx > 0 else "right_to_left"
         
-        config = {
-            "camera": {
-                "rtsp_url": "PREENCHA_AQUI",
-                "process_width": self.native_w,
-                "process_height": self.native_h,
-                "skip_frames": 1,
-            },
-            "calibration": {
-                "method": "homography",
-                "points": [
-                    {"pixel": [p[0], p[1]], "real": [p[2], p[3]]}
-                    for p in self.ref_points
-                ],
-                "homography_matrix": H.tolist(),
-            },
-            "direction": {
-                "expected": direction,
-                "tolerance": 2.0,
-            },
-            "speed": {
-                "limit_kmh": 40,
-                "tolerance_kmh": 5,
-                "min_track_frames": 3,
-            },
+        # Carregar config existente ou usar defaults
+        path = "config.yaml"
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                config = yaml.safe_load(f) or {}
+            print(f"  Mesclando com config existente: {path}")
+        else:
+            config = {}
+        
+        # Atualizar seções de calibração (preserva o resto)
+        config.setdefault("camera", {})["process_width"] = self.native_w
+        config.setdefault("camera", {})["process_height"] = self.native_h
+        config.setdefault("camera", {}).setdefault("skip_frames", 1)
+        # Preserva rtsp_url existente
+        config["camera"].setdefault("rtsp_url", "PREENCHA_AQUI")
+        
+        config["calibration"] = {
+            "method": "homography",
+            "points": [
+                {"pixel": [p[0], p[1]], "real": [p[2], p[3]]}
+                for p in self.ref_points
+            ],
+            "homography_matrix": H.tolist(),
         }
+        
+        config["direction"] = {
+            "expected": direction,
+            "tolerance": config.get("direction", {}).get("tolerance", 2.0),
+        }
+        
+        config.setdefault("speed", {
+            "limit_kmh": 40,
+            "tolerance_kmh": 5,
+            "min_track_frames": 3,
+        })
+        
+        # Defaults que não podem faltar
+        config.setdefault("detection", {
+            "model_size": "n",
+            "confidence": 0.3,
+            "classes": [2, 3, 5, 7],
+            "use_onnx": False,
+        })
+        config.setdefault("alerts", {
+            "log_file": "logs/alerts.log",
+            "save_clips": True,
+            "clips_folder": "clips",
+            "clip_duration_sec": 5,
+            "terminal_beep": True,
+            "cooldown_sec": 30,
+        })
+        config.setdefault("api", {"port": 8090, "status_interval": 30})
+        config.setdefault("prometheus", {"enabled": True})
+        config.setdefault("mqtt", {
+            "enabled": False,
+            "host": "localhost",
+            "port": 1883,
+            "username": "",
+            "password": "",
+            "topic_prefix": "traffic-monitor",
+        })
         
         if self.roi_points:
             config["roi"] = {
                 "polygon": [[p[0], p[1]] for p in self.roi_points]
             }
         
-        path = "config.yaml"
         with open(path, "w") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
         
@@ -345,7 +380,6 @@ class HomographyCalibrator:
         print(f"\n   MATRIZ DE HOMOGRAFIA (3x3):")
         for row in H:
             print(f"     [{', '.join(f'{v:.6f}' for v in row)}]")
-        print(f"\n   Edite o rtsp_url em {path} antes de rodar!")
     
     def run(self):
         print("\n" + "=" * 60)

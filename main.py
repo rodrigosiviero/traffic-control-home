@@ -31,11 +31,14 @@ DATA_DIR = Path("/data" if IN_DOCKER else ".")
 
 # Checar se OpenCV suporta GUI
 _HAS_GUI = True
-try:
-    cv2.imshow("__test__", np.zeros((1, 1, 3), dtype=np.uint8))
-    cv2.destroyAllWindows()
-except cv2.error:
+if IN_DOCKER or os.environ.get("DISPLAY") is None:
     _HAS_GUI = False
+else:
+    try:
+        cv2.imshow("__test__", np.zeros((1, 1, 3), dtype=np.uint8))
+        cv2.destroyAllWindows()
+    except Exception:
+        _HAS_GUI = False
 
 
 _DEBUG_MAX_WIDTH = 1280  # Largura máxima da janela debug

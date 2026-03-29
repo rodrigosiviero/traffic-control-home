@@ -4,6 +4,9 @@ services:
     container_name: traffic-monitor
     restart: unless-stopped
     
+    # Acessar câmera RTSP na rede local
+    network_mode: host
+    
     volumes:
       # Config
       - ./config.yaml:/app/config.yaml:ro
