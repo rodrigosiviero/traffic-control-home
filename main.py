@@ -338,7 +338,7 @@ def run_monitor(config: dict, debug: bool = False, video_file: str = None, loop:
                 scaled_history = [(p[0] * scale_x, p[1] * scale_y) for p in history]
                 
                 direction_result = direction_checker.check(scaled_history)
-                speed_kmh = speed_estimator.estimate(scaled_history)
+                speed_kmh, is_speeding = speed_estimator.estimate_speed(scaled_history)
                 
                 class_id = int(track_data["last_detection"][5])
                 class_names = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
