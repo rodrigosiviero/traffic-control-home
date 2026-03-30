@@ -1,4 +1,4 @@
-FROM openvino/ubuntu22_runtime:latest
+FROM --platform=linux/amd64 openvino/ubuntu22_runtime:latest
 
 USER root
 
@@ -18,9 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Exportar modelo OpenVINO durante o build
 RUN python3 -c "\
-    from ultralytics import YOLO; \
-    m = YOLO('yolov8n.pt'); \
-    m.export(format='openvino', imgsz=640, half=False)" \
+from ultralytics import YOLO; \
+m = YOLO('yolov8n.pt'); \
+m.export(format='openvino', imgsz=640, half=False)" \
     && ls -la yolov8n_openvino_model/
 
 # Baixar modelo PT como fallback
