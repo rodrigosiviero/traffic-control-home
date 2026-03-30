@@ -17,14 +17,14 @@ COPY requirements-docker.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Exportar modelo OpenVINO durante o build
-RUN python -c "\
-from ultralytics import YOLO; \
-m = YOLO('yolov8n.pt'); \
-m.export(format='openvino', imgsz=640, half=False)" \
+RUN python3 -c "\
+    from ultralytics import YOLO; \
+    m = YOLO('yolov8n.pt'); \
+    m.export(format='openvino', imgsz=640, half=False)" \
     && ls -la yolov8n_openvino_model/
 
 # Baixar modelo PT como fallback
-RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
+RUN python3 -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
 
 COPY src/ src/
 COPY main.py .
@@ -35,4 +35,4 @@ ENV DISPLAY=""
 
 EXPOSE 8090
 
-CMD ["python", "main.py"]
+CMD ["python3", "main.py"]
