@@ -153,23 +153,22 @@ class VehicleDetector:
         
         # Auto: tentar GPU primeiro
         try:
-            from openvino.runtime import Core
+            from openvino import Core
             core = Core()
             devices = core.available_devices
             logger.info(f"OpenVINO devices disponíveis: {devices}")
             
             if "GPU" in devices:
-                # Testar se a GPU realmente funciona
                 try:
-                    # Query básico pra verificar se /dev/dri está acessível
-                    core.get_property("GPU", "FULL_DEVICE_NAME")
+                    name = core.get_property("GPU", "FULL_DEVICE_NAME")
+                    logger.info(f"GPU detectada: {name}")
                     return "GPU"
                 except Exception as e:
                     logger.warning(f"Intel GPU encontrada mas inacessível: {e}")
-                    logger.info("Dica: adicione 'devices: [/dev/dri:/dev/dri]' no docker-compose")
                     return "CPU"
             return "CPU"
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Erro ao detectar devices OpenVINO: {e}")
             return "CPU"
     
     def _load_pytorch(self, YOLO, model_name: str):
