@@ -82,8 +82,14 @@ class VehicleDetector:
         
         # Determinar device
         ov_device = self._resolve_openvino_device()
+        self._ov_device = ov_device
         
         try:
+            # Se GPU disponível, forçar compilação nela
+            # (ultralytics sempre compila pro CPU por padrão)
+            if ov_device == "GPU":
+                self._patch_openvino_gpu()
+            
             # Ultralytics >= 8.1 carrega OpenVINO nativamente
             model_path = model_dir if model_dir.exists() else model_file
             self.model = YOLO(str(model_path), task="detect")
@@ -110,6 +116,32 @@ class VehicleDetector:
                 except Exception as e2:
                     logger.warning(f"OpenVINO CPU também falhou: {e2}")
             return False
+    
+    def _patch_openvino_gpu(self):
+        """
+        Força OpenVINO a compilar modelo na GPU.
+        
+        Ultralytics chama Core().compile_model() internamente mas não 
+        passa o device — sempre cai em CPU. Aqui interceptamos 
+        compile_model pra forçar GPU quando disponível.
+        """
+        import openvino as ov
+        
+        _original_compile = ov.Core.compile_model
+        
+        def _compile_gpu_first(core_self, model, device_name=None, **kwargs):
+            # Se o device não foi explicitamente pedido como CPU, tenta GPU
+            if device_name in (None, "AUTO", "CPU"):
+                try:
+                    logger.info("Forçando compilação OpenVINO para GPU...")
+                    return _original_compile(core_self, model, "GPU", **kwargs)
+                except Exception as e:
+                    logger.warning(f"GPU falhou, usando CPU: {e}")
+                    return _original_compile(core_self, model, device_name or "AUTO", **kwargs)
+            return _original_compile(core_self, model, device_name, **kwargs)
+        
+        ov.Core.compile_model = _compile_gpu_first
+        logger.info("OpenVINO Core.compile_model patcheado para preferir GPU")
     
     def _resolve_openvino_device(self) -> str:
         """Determina qual dispositivo OpenVINO usar."""

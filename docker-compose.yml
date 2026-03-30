@@ -1,6 +1,7 @@
 services:
   traffic-monitor:
     build: .
+    platform: linux/amd64
     container_name: traffic-monitor
     restart: unless-stopped
     
